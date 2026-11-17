@@ -95,7 +95,7 @@ function reporObstaculosIniciais() {
 function addSinal() {
   var recursos = new THREE.LoadingManager();
   recursos.setURLModifier(function (url) {
-    return /4224\.jpg$/i.test(url) ? 'assets/images/stop.svg' : url;
+    return recursoJogo(/4224\.jpg$/i.test(url) ? 'assets/images/stop.svg' : url);
   });
   new THREE.FBXLoader(recursos).load('./assets/models/stopsign.fbx', function (modelo) {
     modelo.rotation.y = Math.PI / 2;

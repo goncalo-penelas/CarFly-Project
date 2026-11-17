@@ -1,7 +1,6 @@
 var Moeda;
 var arrayMoedas = [];
 
-
 // A mesma velocidade horizontal preserva a distancia segura ate a recolha.
 function moverMoeda(moeda) {
   if (!moeda.visible) { NovaMoeda(moeda); return; }
@@ -42,19 +41,18 @@ function NovaMoeda(moeda) {
   }
 }
 
-function addMoeda()
-{
-var Geometria_Moeda = new THREE.CylinderGeometry(10,10,1,15);
-var Material_Moeda = new THREE.MeshPhongMaterial({color:0xE6FF40, shading:THREE.FlatShading});
+function addMoeda() {
+  var Geometria_Moeda = new THREE.CylinderGeometry(10,10,1,15);
+  var Material_Moeda = new THREE.MeshPhongMaterial({color:0xE6FF40, shading:THREE.FlatShading});
 
-Moeda = new THREE.Mesh(Geometria_Moeda,Material_Moeda);
+  Moeda = new THREE.Mesh(Geometria_Moeda,Material_Moeda);
 
-Moeda.rotation.x = Math.PI / 2;
-NovaMoeda(Moeda);
-Moeda.castShadow = true;
-Moeda.receiveShadow = true;
+  Moeda.rotation.x = Math.PI / 2;
+  NovaMoeda(Moeda);
+  Moeda.castShadow = true;
+  Moeda.receiveShadow = true;
 
-arrayMoedas.push(Moeda);
+  arrayMoedas.push(Moeda);
 
-Cena.add(Moeda)
+  Cena.add(Moeda);
 }

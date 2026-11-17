@@ -1,3 +1,37 @@
-# Local media excluded from the public project
+# Local media excluded from the public game
 /assets/audio/lon3r-johny-gt3.mp3
 /assets/images/loner.jpg
+
+# Private tests and generated test output
+/tests/
+/test-results/
+/playwright-report/
+/coverage/
+/.test-artifacts/
+
+# Local dependencies and caches
+node_modules/
+.cache/
+.npm/
+
+# Editor and assistant settings
+.vscode/
+.idea/
+.codex/
+
+# Local environment files (keep shareable examples)
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs, temporary files, and OS metadata
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
