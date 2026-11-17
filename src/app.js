@@ -7,10 +7,9 @@ var Renderer;
 var controloLuz1 = 1;
 var controloLuz2 = 1;
 var controloCamera = 1;
-var controloMusica = 1;
 // var importer= new THREE.FBXLoader();
-var height = window.innerHeight - 29,
-  width = window.innerWidth - 8;
+var height = window.innerHeight,
+  width = window.innerWidth;
 var aspect = window.innerWidth / window.innerHeight;
 
 function createCamaras() {
@@ -31,11 +30,12 @@ function createCamaras() {
       600 / 2,
       600 / -2,
       0.1,
-      1000,
+      3000,
     );
-    Camara.position.x = 0;
-    Camara.position.z = 200;
-    Camara.position.y = 75;
+    Camara.position.set(0, 75, 1000);
+    // Vista rigorosamente lateral, centrada no planeta.
+    Camara.lookAt(new THREE.Vector3(0, 75, 0));
+    ajustarJanela();
 
     controloCamera = 1;
   }
@@ -45,29 +45,50 @@ function createScene() {
   Cena = new THREE.Scene();
   createCamaras();
 
-  Cena.fog = new THREE.Fog(0xf7d9aa, 0.0000000001);
+  Cena.fog = new THREE.Fog(0xf7d9aa, 500, 3000);
 
   Renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  Renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   Renderer.setSize(width, height);
   Renderer.shadowMap.enabled = true;
   document.body.appendChild(Renderer.domElement);
 
   createDirectionalLight();
   createAmbientLight();
-  Musica();
 }
 
-function Musica() {
-  var listener = new THREE.AudioListener();
-  var sound = new THREE.Audio(listener);
-  var audioLoader = new THREE.AudioLoader();
+function ajustarJanela() {
+  width = Math.max(1, window.innerWidth);
+  height = Math.max(1, window.innerHeight);
+  aspect = width / height;
+  if (Camara) {
+    if (Camara.isPerspectiveCamera) Camara.aspect = aspect;
+    else {
+      // Mantem o carro visivel tambem em janelas estreitas.
+      var meiaAltura = Math.max(300, 180 / aspect);
+      Camara.left = -meiaAltura * aspect;
+      Camara.right = meiaAltura * aspect;
+      Camara.top = meiaAltura;
+      Camara.bottom = -meiaAltura;
+    }
+    Camara.updateProjectionMatrix();
+  }
+  if (Renderer) {
+    Renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    Renderer.setSize(width, height);
+  }
+}
+window.addEventListener('resize', ajustarJanela);
 
-  audioLoader.load("assets/audio/lon3r-johny-gt3.mp3", function (buffer) {
-    sound.setBuffer(buffer);
-    sound.setLoop(true);
-    sound.setVolume(0.5);
-    sound.play();
-  });
+function alternarPausa() {
+  if (!jogo || !jogo.pronto || (jogo.status !== 'jogar' && jogo.status !== 'pausa')) return;
+  jogo.status = jogo.status === 'pausa' ? 'jogar' : 'pausa';
+  Posicao_Carro = { x: 0, y: 0 };
+  ultimoFrame = undefined;
+  var pausa = jogo.status === 'pausa';
+  document.getElementById('botaoPausa').textContent = pausa ? 'Continuar' : 'Pausar';
+  document.getElementById('botaoPausa').setAttribute('aria-pressed', String(pausa));
+  document.getElementById('avisoPausa').hidden = !pausa;
 }
 
 // Configuração de luzes
@@ -79,15 +100,17 @@ function createDirectionalLight() {
     DirectionalLight = new THREE.DirectionalLight(0xffffff, 1);
     DirectionalLight.position.set(100, 150, 150);
     DirectionalLight.castShadow = true;
-    DirectionalLight.shadow.camera.left = 400;
-    DirectionalLight.shadow.camera.right = -400;
-    DirectionalLight.shadow.camera.top = 100;
-    DirectionalLight.shadow.camera.bottom = -300;
+    DirectionalLight.shadow.camera.left = -700;
+    DirectionalLight.shadow.camera.right = 700;
+    DirectionalLight.shadow.camera.top = 400;
+    DirectionalLight.shadow.camera.bottom = -700;
     DirectionalLight.shadow.camera.near = 1;
-    DirectionalLight.shadow.camera.far = 1000;
-    DirectionalLight.shadow.mapSize.width = 9999;
-    DirectionalLight.shadow.mapSize.height = 9999;
+    DirectionalLight.shadow.camera.far = 2000;
+    DirectionalLight.shadow.mapSize.width = 2048;
+    DirectionalLight.shadow.mapSize.height = 2048;
 
+    DirectionalLight.shadow.normalBias = 0.5;
+    DirectionalLight.shadow.bias = -0.0001;
     Cena.add(DirectionalLight);
     controloLuz1 = 2;
   } else {
@@ -98,7 +121,7 @@ function createDirectionalLight() {
 
 function createAmbientLight() {
   if (controloLuz2 == 1) {
-    AmbientLight = new THREE.AmbientLight(0xdc8874, 0.5);
+    AmbientLight = new THREE.AmbientLight(0xffffff, 0.75);
 
     Cena.add(AmbientLight);
     controloLuz2 = 2;
@@ -113,9 +136,10 @@ function createAmbientLight() {
 var jogo;
 var pontuacao;
 
-var VelocidadeAndar = 4;
+var VelocidadeAndar = 3;
 
 var estrada;
+var planeta;
 var Relva, Relva2;
 
 var Posicao_Carro = { x: 0, y: 0 };
@@ -125,16 +149,25 @@ function ComecarJogo() {
     pontuacao: 0,
     valorMoeda: 15,
     valorObstaculo: 10,
-    gravidade: 1,
+    gravidade: 1.8,
+    tempo: 0,
+    velocidade: 2.5,
 
+    pronto: obstaculosIniciais.length > 0,
     status: "jogar",
   };
 }
 
 function addEstrada() {
   estrada = new THREE.Object3D();
-  var posicao = -600;
-  var Geometria_Estrada = new THREE.CylinderGeometry(600, 600, 200, 70);
+  planeta = new THREE.Object3D();
+  planeta.position.y = -600;
+  estrada.add(planeta);
+  // Uma faixa e duas calotes da mesma esfera, com o eixo polar em Z.
+  var limiteFaixa = Math.acos(100 / 600);
+  var Geometria_Estrada = new THREE.SphereGeometry(
+    600, 96, 16, 0, Math.PI * 2, limiteFaixa, Math.PI - 2 * limiteFaixa
+  );
   Geometria_Estrada.applyMatrix(
     new THREE.Matrix4().makeRotationX(-Math.PI / 2),
   );
@@ -147,70 +180,113 @@ function addEstrada() {
   Textura_Estrada.encoding = THREE.sRGBEncoding;
   var Material_Estrada = new THREE.MeshPhongMaterial({ map: Textura_Estrada });
   Estrada = new THREE.Mesh(Geometria_Estrada, Material_Estrada);
-  Estrada.position.y = posicao;
-  Estrada.receiveShadow = true;
-  estrada.add(Estrada);
+  Estrada.position.y = 0;
+  Estrada.receiveShadow = false;
+  planeta.add(Estrada);
 
-  var Geometria_Relva = new THREE.SphereGeometry(600, 800, 400, 70);
+  var Geometria_Relva = new THREE.SphereGeometry(600, 96, 48, 0, Math.PI * 2, 0, limiteFaixa);
   Geometria_Relva.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+  // Projecao uniforme: evita os aneis escuros criados pelas repeticoes nos paralelos.
+  var pontosRelva = Geometria_Relva.attributes.position;
+  var uvRelva = Geometria_Relva.attributes.uv;
+  for (var i = 0; i < pontosRelva.count; i++) {
+    uvRelva.setXY(i, pontosRelva.getX(i) / 120, pontosRelva.getY(i) / 120);
+  }
   var Textura_Relva = new THREE.TextureLoader().load("assets/images/relva.jpg");
-  Textura_Relva.wrapS = Textura_Relva.wrapT = THREE.RepeatWrapping;
-  Textura_Relva.repeat.set(10, 5);
+  Textura_Relva.wrapS = Textura_Relva.wrapT = THREE.MirroredRepeatWrapping;
+  Textura_Relva.repeat.set(1, 1);
   Textura_Relva.anisotropy = 1;
   Textura_Relva.encoding = THREE.sRGBEncoding;
   var Material_Relva = new THREE.MeshPhongMaterial({ map: Textura_Relva });
   Relva = new THREE.Mesh(Geometria_Relva, Material_Relva);
-  Relva.position.y = posicao;
-  Relva.position.z = 200;
-  Relva.receiveShadow = true;
-  estrada.add(Relva);
+  Relva.position.y = 0;
+  Relva.position.z = 0;
+  Relva.receiveShadow = false;
+  planeta.add(Relva);
 
   Relva2 = Relva.clone();
-  Relva2.position.z = -Relva.position.z;
-  estrada.add(Relva2);
+  Relva2.rotation.y = Math.PI;
+  planeta.add(Relva2);
 
   addSinal();
 
   Cena.add(estrada);
 }
 
-function updateElementos() {
+function updateElementos(passo) {
+  jogo.tempo += passo / 60;
+  jogo.velocidade = Math.min(4.5, 2.5 + jogo.tempo / 60);
+  jogo.passo = passo;
   pontuacao = jogo.pontuacao.toString();
   document.getElementById("pontuacao").innerHTML = pontuacao;
 
-  // Carro
-  if (Posicao_Carro) {
-    if (carro.position.y > 10) {
-      carro.position.y -= jogo.gravidade;
-    }
-
-    if (carro.position.y < 200) {
-      carro.position.y += Posicao_Carro.y;
-    }
-  }
+  var acelerar = Posicao_Carro.y > 0;
+  var velocidadeVertical = acelerar ? VelocidadeAndar : -jogo.gravidade;
+  carro.position.y = Math.max(10, Math.min(200, carro.position.y + velocidadeVertical * passo));
+  var angulo = acelerar ? 0.14 : -0.10;
+  if (carro.position.y === 10 || carro.position.y === 200) angulo = 0;
+  carro.rotation.z += (angulo - carro.rotation.z) * (1 - Math.exp(-0.12 * passo));
 
   //Moeda
   arrayMoedas.forEach(moverMoeda);
   Moeda.rotation.z += 0.06;
   // Outros elementos
-  arrayFumos.forEach(moverFumo);
+  if (intervaloFumo > 0) intervaloFumo--;
+  if (Posicao_Carro.y > 0) addFumo();
+  arrayFumos.slice().forEach(moverFumo);
   arraySinais.forEach(moverSinal);
   arrayNuvens.forEach(moverNuvens);
+  arrayNuvensDecorativas.forEach(moverNuvemDecorativa);
+  gerirObstaculos();
 
-  Estrada.rotation.z += 0.005;
-  Relva.rotation.z += 0.005;
-  Relva2.rotation.z += 0.005;
+  // As tres superficies partilham a mesma origem e uma unica rotacao.
+  planeta.rotation.z += jogo.velocidade / 600 * passo;
 }
 
-function loop() {
-  if (jogo.status == "jogar") {
-    updateElementos();
+function guardarEstadoInicial(objeto) {
+  objeto.userData.inicial = {
+    visivel: objeto.visible,
+    posicao: objeto.position.clone(),
+    rotacao: objeto.rotation.clone(),
+    escala: objeto.scale.clone()
+  };
+}
+
+function reporEstadoInicial(objeto) {
+  var inicial = objeto.userData.inicial;
+  objeto.visible = inicial.visivel;
+  objeto.position.copy(inicial.posicao);
+  objeto.rotation.copy(inicial.rotacao);
+  objeto.scale.copy(inicial.escala);
+}
+
+function ReiniciarJogo() {
+  ComecarJogo();
+  ultimoFrame = undefined;
+  Posicao_Carro = { x: 0, y: 0 };
+  reporObstaculosIniciais();
+  [carro, Moeda, planeta].concat(arrayNuvensDecorativas).forEach(reporEstadoInicial);
+  arrayFumos.slice().forEach(eliminarFumo);
+  intervaloFumo = 0;
+  document.getElementById('pontuacao').innerHTML = '0';
+  document.getElementById('botaoPausa').textContent = 'Pausar';
+  document.getElementById('botaoPausa').setAttribute('aria-pressed', 'false');
+  document.getElementById('avisoPausa').hidden = true;
+  Cena.updateMatrixWorld(true);
+}
+
+var ultimoFrame;
+
+function loop(agora) {
+  var passo = ultimoFrame === undefined || agora === undefined ? 1 :
+    Math.min((agora - ultimoFrame) / (1000 / 60), 2);
+  ultimoFrame = agora;
+  if (jogo.status == "jogar" && jogo.pronto) {
+    updateElementos(passo);
     detetarColisao();
   } else if (jogo.status == "gameover") {
     alert("GameOver");
-    carro.position.y = 100;
-    jogo.pontuacao = 0;
-    jogo.status = "jogar";
+    ReiniciarJogo();
   }
   Renderer.render(Cena, Camara);
   requestAnimationFrame(loop);
@@ -222,13 +298,16 @@ function init() {
   document.getElementById("botaoAlterarCamara").style.display = "inline";
   document.getElementById("botaoLuzAmbient").style.display = "inline";
   document.getElementById("botaoLuzDirectional").style.display = "inline";
+  document.getElementById("botaoPausa").hidden = false;
 
   ComecarJogo();
   createScene();
   addCarro();
-  addMoeda();
   addEstrada();
   addNuvem();
+  addMoeda();
+  [carro, Moeda, planeta].concat(arrayNuvens, arrayNuvensDecorativas)
+    .forEach(guardarEstadoInicial);
   document.addEventListener("keydown", handleKeyDown, false);
   document.addEventListener("keyup", handleKeyUp, false);
   document.addEventListener("mousedown", handleMouseDown, false);

@@ -1,55 +1,30 @@
-// Configuração Rato e Teclado
+// Os controlos da interface nao fazem o carro acelerar.
+function podeAcelerar(ev) {
+  return jogo && jogo.pronto && jogo.status === 'jogar' &&
+    !(ev.target && ev.target.closest && ev.target.closest('button'));
+}
 
-
-// Espaço
 function handleKeyDown(ev) {
-    var coords = {
-      x:0,
-      y:0,
-     };
-     if(ev.keyCode == 32){
-        coords.y += VelocidadeAndar;
-        addFumo();
-     }
-      
-  
-    Posicao_Carro = coords;
-   }
+  if (ev.keyCode !== 32 || !podeAcelerar(ev)) return;
+  if (ev.preventDefault) ev.preventDefault();
+  Posicao_Carro.y = VelocidadeAndar;
+  addFumo();
+}
 
-  function handleKeyUp(ev){
-     var coords = {
-      x:0,
-      y:0,
-     };
-     if(ev.keyCode == 32)
-     {
-        coords.y = 0;
-     }
-     Posicao_Carro = coords;
-   }
-  
+function handleKeyUp(ev) {
+  if (ev.keyCode === 32) Posicao_Carro.y = 0;
+}
 
-// Rato
-  function handleMouseDown(ev) {
-    var coords = {
-      x:0,
-      y:0,
-     };
-     if(ev.which == 1){
-        coords.y += VelocidadeAndar;
-        addFumo();
-     }
-    Posicao_Carro = coords;
-  }
+function handleMouseDown(ev) {
+  if (ev.which !== 1 || !podeAcelerar(ev)) return;
+  Posicao_Carro.y = VelocidadeAndar;
+  addFumo();
+}
 
-  function handleMouseUp(ev) {
-   var coords = {
-     x:0,
-     y:0,
-    };
-    if(ev.which == 1)
-    {
-       coords.y = 0;
-    }
-   Posicao_Carro = coords;
- }
+function handleMouseUp(ev) {
+  if (ev.which === 1) Posicao_Carro.y = 0;
+}
+window.addEventListener('blur', function () {
+  Posicao_Carro.y = 0;
+  if (jogo && jogo.status === 'jogar') alternarPausa();
+});

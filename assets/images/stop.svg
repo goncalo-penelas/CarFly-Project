@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#bc141c"/>
+  <path d="M150 10H362L502 150V362L362 502H150L10 362V150Z" fill="#bc141c" stroke="white" stroke-width="14"/>
+  <text x="256" y="300" text-anchor="middle" font-family="Arial,sans-serif" font-size="142" font-weight="bold" fill="white">STOP</text>
+</svg>

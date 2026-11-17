@@ -1,51 +1,48 @@
-var nuvem;
 var arrayNuvens = [];
+var arrayNuvensDecorativas = [];
+var geometriaNuvem, materialNuvem;
 
-
-function moverNuvens(nuvem)
-{
-    var final = new THREE.Vector3(-10000, nuvem.position.y, nuvem.position.z);
-
-    nuvem.position.lerp(final, 0.0001);
-
-    if(nuvem.position.x < carro.position.x - 500)
-    {
-        eliminarNuvens(nuvem);
-    }
+function criarNuvem() {
+  var nuvem = new THREE.Object3D();
+  nuvem.userData.nuvem = true;
+  if (!geometriaNuvem) geometriaNuvem = new THREE.SphereGeometry(1, 16, 12);
+  if (!materialNuvem) materialNuvem = new THREE.MeshPhongMaterial({ color: 0xffffff });
+  [[-15, 0, 0, 12], [0, 5, 0, 16], [15, 0, 0, 12], [0, -4, 6, 12]].forEach(function (parte) {
+    var volume = new THREE.Mesh(geometriaNuvem, materialNuvem);
+    volume.position.set(parte[0], parte[1], parte[2]);
+    volume.scale.setScalar(parte[3]);
+    volume.castShadow = true;
+    nuvem.add(volume);
+  });
+  return nuvem;
 }
 
-function eliminarNuvens(nuvem)
-{ 
-    nuvem.position.x = 500;
-    nuvem.position.y = Math.floor(Math.random() * (200 - 120 + 1)) + 120;
-    nuvem.position.z = Math.floor(Math.random() * (500 - -500 + 1)) + -500;
-    const index = arrayFumos.indexOf(nuvem);
-    if (index > -1) {
-        arrayNuvens.splice(index, 1);
-    }
+function deslocarNuvem(nuvem) {
+  // O mesmo deslocamento por tempo para todas as nuvens.
+  nuvem.position.x -= jogo.velocidade * (jogo.passo === undefined ? 1 : jogo.passo);
 }
 
-function addNuvem(){
-    
-    var Geometria_Nuvem = new THREE.TorusKnotGeometry(5, 20, 30, 100, 2, 3);
-    var Material_Nuvem = new THREE.MeshPhongMaterial({
-      color:0xffffff,
-    });
-  
-    // var nBlocs = Math.floor(Math.random() * (30 - 5 + 1)) + 5;
-    for (let i=0; i<30; i++ ){
-      nuvem = new THREE.Mesh(Geometria_Nuvem.clone(), Material_Nuvem);
-      nuvem.position.x = i*40;
-      nuvem.position.y = Math.floor(Math.random() * (300 - 180 + 1)) + 180;
-      nuvem.position.z = Math.floor(Math.random() * (500 - -500 + 1)) + -500;
-      nuvem.rotation.z = Math.random()*Math.PI*2;
-      nuvem.rotation.y = Math.random()*Math.PI*2;
-      var s = .1 + Math.random()*.9;
-      nuvem.scale.set(s,s,s);
-      nuvem.castShadow = true;
+function moverNuvemDecorativa(nuvem) {
+  deslocarNuvem(nuvem);
+  if (nuvem.position.x < -650) nuvem.position.x += 1800;
+}
 
-      arrayNuvens.push(nuvem);
-      Cena.add(nuvem);
+function moverNuvens(nuvem) {
+  deslocarNuvem(nuvem);
+
+}
+
+function addNuvem() {
+  // Nuvens laterais: apenas cenario, fora das colisoes e da geracao de obstaculos.
+  for (var lado = -1; lado <= 1; lado += 2) {
+    for (var j = 0; j < 10; j++) {
+      var decorativa = criarNuvem();
+      decorativa.position.set(-450 + j * 180 + Math.random() * 80,
+        90 + Math.random() * 230, lado * (120 + Math.random() * 240));
+      decorativa.scale.setScalar(0.6 + Math.random() * 1.2);
+      decorativa.rotation.y = Math.random() * Math.PI * 2;
+      arrayNuvensDecorativas.push(decorativa);
+      Cena.add(decorativa);
     }
-  
   }
+}

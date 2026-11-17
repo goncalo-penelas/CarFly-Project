@@ -1,69 +1,47 @@
-objetosColisao = [];
-
 function distancia(p1, p2) {
-  var dx = p1.x - p2.x;
-  var dy = p1.y - p2.y;
-  var dz = p1.z - p2.z;
+  return p1.distanceTo(p2);
+}
 
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+// Compara cada malha visivel: o poste e a placa nao formam uma caixa unica.
+function colideComObstaculo(obstaculo, caixasCarro) {
+  if (!obstaculo.visible) return false;
+  var colisao = false;
+  obstaculo.updateWorldMatrix(true, true);
+  obstaculo.traverse(function (parte) {
+    if (!parte.isMesh || !parte.visible || colisao) return;
+    if (obstaculo.userData.nuvem) {
+      if (!parte.geometry.boundingSphere) parte.geometry.computeBoundingSphere();
+      var esfera = parte.geometry.boundingSphere.clone().applyMatrix4(parte.matrixWorld);
+      colisao = caixasCarro.some(function (caixaCarro) {
+        return caixaCarro.intersectsSphere(esfera);
+      });
+      return;
+    }
+    if (!parte.geometry.boundingBox) parte.geometry.computeBoundingBox();
+    var caixa = parte.geometry.boundingBox.clone().applyMatrix4(parte.matrixWorld);
+    colisao = caixasCarro.some(function (caixaCarro) {
+      return caixaCarro.intersectsBox(caixa);
+    });
+  });
+  return colisao;
 }
 
 function detetarColisao() {
-  var RaioCarro = 10;
-
-  arrayMoedas.forEach((Moeda) => {
-    var distanciaMoedaCarro = distancia(Moeda.position, carro.position);
-    // console.log(distanciaMoedaCarro);
-    var RaioMoeda = 10;
-
-    if (distanciaMoedaCarro < RaioCarro + RaioMoeda) {
+  arrayMoedas.forEach(function (moeda) {
+    if (moeda.visible && distancia(moeda.position, carro.position) < 20) {
       jogo.pontuacao += jogo.valorMoeda;
-      NovaMoeda(Moeda);
+      NovaMoeda(moeda);
     }
   });
 
-  // if(StopSinal && carro)
-  // {
-  //   var matrix = new THREE.Matrix4();
-  // 	matrix.extractRotation(StopSinal.matrix);
-  // 	var directionFront = new THREE.Vector3(0,0,1);
-  // 	directionFront.applyMatrix4(matrix);
-  // 	var rayCaster = new THREE.Raycaster(StopSinal.position,directionFront);
-  // 	if(rayIntersect(rayCaster,0.1))
-  // 	{
-  // 		jogo.status = "gameover";
-  // 	}
-
-  //   function rayIntersect(ray, distance) {
-  //     var intersects = ray.intersectObjects(objetosColisao);
-  //     for (var i = 0; i < intersects.length; i++) {
-  //       if (intersects[i].distance < distance) {
-  //         return true;
-  //       }
-  //     }
-  //     return false;
-  //   }
-  // }
-
-  arrayParede.forEach((parede) => {
-    var posicaoMundial = new THREE.Vector3();
-    parede.getWorldPosition(posicaoMundial);
-
-    var distanciaSinalCarro = distancia(posicaoMundial, carro.position);
-    // console.log("Distancia parede-carro:", distanciaSinalCarro);
-    var raioSinal = 50;
-    if (distanciaSinalCarro < RaioCarro + raioSinal) {
-      jogo.status = "gameover";
-    }
+  carro.updateWorldMatrix(true, true);
+  var caixasCarro = [];
+  carro.traverse(function (parte) {
+    if (!parte.isMesh || !parte.visible) return;
+    if (!parte.geometry.boundingBox) parte.geometry.computeBoundingBox();
+    caixasCarro.push(parte.geometry.boundingBox.clone().applyMatrix4(parte.matrixWorld));
   });
-
-  arrayNuvens.forEach((nuvem) => {
-    var distanciaNuvemCarro = distancia(nuvem.position, carro.position);
-
-    var RaioNuvem = 10;
-
-    if (distanciaNuvemCarro < RaioCarro + RaioNuvem) {
-      jogo.status = "gameover";
-    }
-  });
+  if (arraySinais.concat(arrayNuvens).some(function (obstaculo) {
+    return colideComObstaculo(obstaculo, caixasCarro);
+  })) jogo.status = 'gameover';
 }

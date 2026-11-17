@@ -2,10 +2,12 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
         CarFly
     </title>
-    <link rel="shortcut icon" type="image/jpg" href="assets/images/loner.jpg" />
+    <link rel="icon" href="data:,">
     <style>
         button {
             cursor: pointer;
@@ -77,6 +79,15 @@
             background-size: cover;
             background-attachment: fixed;
         }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #logo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .controlos { position: fixed; top: 10px; right: 10px; left: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; z-index: 99; }
+        .controlos button { position: static; margin: 0; font-size: clamp(11px, 1.3vw, 15px); }
+        .pontuacao { top: 90px; left: 20px; font-size: clamp(24px, 4vw, 40px); }
+        [hidden] { display: none !important; }
+        #avisoPausa { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 90; color: white; background: #0005; font: bold 36px Arial, sans-serif; text-shadow: 0 2px 5px #000; }
+        @media (max-width: 500px) { .pontuacao { top: 135px; } .controlos { gap: 5px; } }
     </style>
 
     <script src="vendor/inflate.min.js"></script>
@@ -98,12 +109,16 @@
 <body>
     <img src="assets/images/road.jpg" id="logo">
     <button id="botaoJogar" type="button" class="buttonInicio" onclick="init()">Jogar</button>
+    <div id="avisoPausa" hidden>Em pausa</div>
+    <div class="controlos">
+    <button id="botaoPausa" type="button" onclick="alternarPausa()" aria-pressed="false" hidden>Pausar</button>
     <button id="botaoAlterarCamara" type="button" class="buttonCamaras" onclick="createCamaras()">Alterar
         Câmara</button>
     <button id="botaoLuzAmbient" type="button" class="buttonLuzAmbient" onclick="createAmbientLight()">Ligar/Desligar
         AmbientLight</button>
     <button id="botaoLuzDirectional" type="button" class="buttonLuzDirectional"
         onclick="createDirectionalLight()">Ligar/Desligar DirectionalLight</button>
+    </div>
     <div id="pontuacao" class="pontuacao"></div>
 </body>
 
